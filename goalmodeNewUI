@@ -1,0 +1,23 @@
+Target			Input		Action
+--------------------------------------
+Empty space		Click		Prompt for variables
+Empty space		Click-drag	Multi-select
+Empty space		Right-click	Insert empty cut
+Empty space		Right-drag	Surround with cut
+Empty space		ctrl-click	Select all in context (up to but not including cut)
+Item			Click		Select
+Item			ctrl-click	Add to selection
+Item			Click-drag	Move
+Item			Right-click Undefined behavior
+Item			Right-drag  Copy?
+                Arrows		Move selection
+                Delete		Erase selection
+
+
+In proof mode:
+Iteration		Right-drag (both directions)
+Erasure			Right-click cut boundary or variable in positive layer
+Insertion		Right-click empty space in negative layer (how to do cuts vs. variables?)
+Double cut		Right-click between two cuts
+
+Note: Width of cut boundary should be larger, so user can comfortably select it
