@@ -1,66 +1,110 @@
-var nextid = 1;
-var rootnode;
+var rootElement;
+
+var selection;
+
+var graphTree;
+var graphMap;
 
 window.onload=function(){
-	rootnode = document.getElementById('node0');
-	rootnode.addEventListener('click', onClickConstructMode);
+	rootElement = document.getElementById('node0');
+	rootElement.addEventListener('click', onClickConstructMode);
 	document.addEventListener('contextmenu', function(event){return false;});
-	rootnode.addEventListener('contextmenu', function(event){addEmptyCut(event,this);return false;});
+	rootElement.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this);return false;});
+	RootNode.element = rootElement;
+	selection = new Set();
+	nodesMap.set(rootElement, RootNode);
+	graphTree = new Set();
+	graphMap = new Map();
+	graphMap.set(rootElement, graphTree);
 };
 
-function addVariable(name, x, y, parent){
-	var child = document.createElementNS("http://www.w3.org/2000/svg", 'text');
-	child.setAttribute("x", x);
-	child.setAttribute("y", y);
-	child.innerHTML = name; //TODO: Parse Fitch syntax
-	child.setAttribute("id", "node"+nextid);
-	++nextid;
-	child.addEventListener('click', function(event){
-		alert("clicked on: " +this.innerHTML);
-		event.stopPropagation();
-		return false;
-	});
-
-	rootnode.appendChild(child);
-	return child;
-}
-
 function scale(parent, child){
-	if(!child || !parent) return;
-	//if(parent.getBBox.width && parent.getBBox.height{ //if not at root scope
-	if(parent.getBBox().x+parent.getBBox().width < child.getBBox().x+child.getBBox().width){
-		parent.setAttribute('width', child.getBBox().x+child.getBBox().width-parent.getBBox().x + 10);
+	if(!graphMap.get(parent) || !graphMap.get(parent).has(child)) return;	
+
+	var pBox = parent.getBBox();
+	var cBox = child.getBBox();
+
+	if(pBox.x+pBox.width < cBox.x+cBox.width){
+		var delta = (cBox.x+cBox.width-pBox.x + 10)-pBox.width;
+		parent.setAttribute('width', pBox.width + delta);
+		for(let sibling of graphMap.get(parentOf(parent))){
+			var sBox = sibling.getBBox();
+			if(sBox.y+sBox.height > pBox.y && pBox.y+pBox.height > sBox.y){ //If there is y-overlap
+				if(sBox.x > pBox.x && sBox.x < pBox.x + pBox.width - 10){
+					nudgeX(sibling, delta);
+				}
+			}
+		}
 	}
-	if(parent.getBBox().y+parent.getBBox().height < child.getBBox().y+child.getBBox().height){
-		parent.setAttribute('height', child.getBBox().y+child.getBBox().height-parent.getBBox().y + 10);
+	if(pBox.y+pBox.height < cBox.y+cBox.height){
+		var delta = (cBox.y+cBox.height-pBox.y + 10)-pBox.height;
+		parent.setAttribute('height', pBox.height + delta);
+		for(let sibling of graphMap.get(parentOf(parent))){
+			var sBox = sibling.getBBox();
+			if(sBox.x+sBox.width > pBox.x && pBox.x+pBox.width > sBox.x){ //If there is x-overlap
+				if(sBox.y > pBox.y && sBox.y < pBox.y + pBox.height - 10){
+					nudgeY(sibling, delta);
+				}
+			}
+		}
 	}
 
 	scale(document.getElementById(parent.getAttribute("parent")), parent);
 	//}
 }
 
+function nudgeX(node, delta){
+	console.log("Nudging: "+node.getAttribute("id"));
+	var pBox = node.getBBox();
+	node.setAttribute('x', pBox.x+delta);
+	if(node.tagName != 'text') for(let child of graphMap.get(node)) nudgeX(child, delta);
+
+	for(let sibling of graphMap.get(parentOf(node))){
+		var sBox = sibling.getBBox();
+		if(sibling != node && sBox.y+sBox.height > pBox.y && pBox.y+pBox.height > sBox.y){ //If there is y-overlap
+			if(sBox.x > pBox.x && sBox.x < pBox.x + pBox.width - 10){
+				nudgeX(sibling, delta);
+			}
+		}
+	}
+}
+
+function nudgeY(node, delta){
+	var pBox = node.getBBox();
+	node.setAttribute('y', pBox.y+delta);
+	if(node.tagName != 'text') for(let child of graphMap.get(node)) nudgeY(child, delta);
+	
+	for(let sibling of graphMap.get(parentOf(node))){
+		var sBox = sibling.getBBox();
+		if(sibling != node && sBox.x+sBox.width > pBox.x && pBox.x+pBox.width > sBox.x){ //If there is x-overlap
+			if(sBox.y > pBox.y && sBox.y < pBox.y + pBox.height - 10){
+				nudgeY(sibling, delta);
+			}
+		}
+	}
+}
+
+function selectElement(element){
+	selection.add(element);
+	element.setAttribute("stroke", "red"); 
+}
+
+function clearSelection(){
+	selection.forEach(function(){this.setAttribute("stroke", "black");});
+	selection.clear();
+}
+
 function onClickConstructMode(event){
 	var variableName = prompt("Enter name of variable");
 	if(!variableName) return;
 	var child = addVariable(variableName, event.pageX, event.pageY, this);
-	if(parent != rootnode) scale(this, child);
+	if(parent != rootElement) scale(this, child);
 	event.stopPropagation();
 }
 
-function addEmptyCut(event, parent){
-	var child = document.createElementNS("http://www.w3.org/2000/svg", 'rect');
-	child.setAttribute("x", event.pageX);
-	child.setAttribute("y", event.pageY);
-	child.setAttribute("rx", 30);
-	child.setAttribute("ry", 30);
-	child.setAttribute("height", 64);
-	child.setAttribute("width", 64);
-	child.style.fill=(parent.style.fill=="cyan")?"white":"cyan";
-	child.setAttribute("id", "node"+nextid);
-	child.setAttribute("parent", parent.getAttribute('id'));
-	++nextid;
-	child.addEventListener('click', onClickConstructMode);
-	child.addEventListener('contextmenu', function(event){scale(this, addEmptyCut(event,this)); event.stopPropagation(); return false;});
-	rootnode.appendChild(child);
-	return child;
+function onRightClickConstructMode(event){
+	var child = addEmptyCut(event.pageX, event.pageY, this);
+	if(parent != rootElement) scale(this, child);
+	event.stopPropagation();
+	return false;
 }
