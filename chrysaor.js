@@ -14,7 +14,7 @@ window.onload=function(){
 
 function onSelect(event){
 	//alert("clicked on: " +this.innerHTML);
-	if(!event.shiftKey){
+	if(!event.shiftKey && !(selection.size==1 && selection.has(elementsToNodes.get(this)))){
 		clearSelection();
 	}
 	selectElement(this);
@@ -25,28 +25,46 @@ function onSelect(event){
 
 function selectElement(element){
 	var node = elementsToNodes.get(element);
-	selection.add(node);
-	node.element.setAttribute("stroke", "red"); 
+	if(selection.has(node)){
+		selection.delete(node);
+		node.element.setAttribute("stroke", "black"); 
+	}else{
+		selection.add(node);
+		node.element.setAttribute("stroke", "red"); 
+	}
 }
 
 function clearSelection(){
-	selection.forEach(function(){this.element.setAttribute("stroke", "black");});
+	selection.forEach(function(key, value, set){value.element.setAttribute("stroke", "black");});
 	selection.clear();
 }
 
 function onClickConstructMode(event){
-	var variableName = prompt("Enter name of variable");
-	if(!variableName) return;
-	var child = addVariable(variableName, event.pageX, event.pageY, this);
-	//if(parent != rootElement) scale(this, child);
+	if(event.shiftKey){
+		clearSelection();
+		for(let node of elementsToNodes.get(this).children){
+			selection.add(node);
+			node.element.setAttribute("stroke", "red");
+		}
+	}else{
+		var variableName = prompt("Enter name of variable");
+		if(!variableName) return;
+		var child = addVariable(variableName, event.pageX, event.pageY, this);
+	}
 	event.stopPropagation();
 }
 
 function onRightClickConstructMode(event){
 	var child = addEmptyCut(event.pageX, event.pageY, this);
-	//if(parent != rootElement) scale(this, child);
 	event.stopPropagation();
 	return false;
+}
+
+function handleKeyPress(event){
+	//alert(event.key);
+	if(event.key == "ArrowUp"){
+
+	}
 }
 
 //Repositions all nodes to accommodate this node.
