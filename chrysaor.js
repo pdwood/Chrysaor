@@ -3,7 +3,6 @@ var rootElement;
 var selection;
 
 var graphTree;
-var graphMap;
 
 window.onload=function(){
 	rootElement = document.getElementById('node0');
@@ -12,7 +11,7 @@ window.onload=function(){
 	rootElement.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this);return false;});
 	RootNode.element = rootElement;
 	selection = new Set();
-	nodesMap.set(rootElement, RootNode);
+	elementsToNodes.set(rootElement, RootNode);
 	graphTree = new Set();
 	graphMap = new Map();
 	graphMap.set(rootElement, graphTree);
@@ -84,13 +83,26 @@ function nudgeY(node, delta){
 	}
 }
 
+
+function onSelect(event){
+	//alert("clicked on: " +this.innerHTML);
+	if(!event.shiftKey){
+		clearSelection();
+	}
+	selectElement(this);
+	event.stopPropagation();
+	return false;
+}
+
+
 function selectElement(element){
-	selection.add(element);
-	element.setAttribute("stroke", "red"); 
+	var node = elementsToNodes.get(element);
+	selection.add(node);
+	node.element.setAttribute("stroke", "red"); 
 }
 
 function clearSelection(){
-	selection.forEach(function(){this.setAttribute("stroke", "black");});
+	selection.forEach(function(){this.element.setAttribute("stroke", "black");});
 	selection.clear();
 }
 
@@ -98,13 +110,59 @@ function onClickConstructMode(event){
 	var variableName = prompt("Enter name of variable");
 	if(!variableName) return;
 	var child = addVariable(variableName, event.pageX, event.pageY, this);
-	if(parent != rootElement) scale(this, child);
+	//if(parent != rootElement) scale(this, child);
 	event.stopPropagation();
 }
 
 function onRightClickConstructMode(event){
 	var child = addEmptyCut(event.pageX, event.pageY, this);
-	if(parent != rootElement) scale(this, child);
+	//if(parent != rootElement) scale(this, child);
 	event.stopPropagation();
 	return false;
+}
+
+//Repositions all nodes to accommodate this node.
+function refresh(node){
+	var pBox = node.element.getBBox();
+
+	//Scale for children
+	if(node instanceof CutNode) for(let child of node.children){
+		var cBox = child.element.getBBox();
+		//check for overlap in other direction?
+
+		//if overlap, change width and height
+		if(cBox.x+cBox.width > pBox.x+pBox.width-10){
+			node.setWidth(cBox.width + cBox.x - pBox.x + 10);
+		}
+		if(cBox.y+cBox.height > pBox.y+pBox.height-10){
+			node.setHeight(cBox.height + cBox.y - pBox.y + 10);
+		}
+	}
+
+	pushSiblings(node);
+
+	//Scale the parent
+	if(node.parent != RootNode) refresh(node.parent);
+}
+
+function pushSiblings(node){
+	var pBox = node.element.getBBox();
+
+	for(let sibling of node.parent.children){
+		var sBox = sibling.element.getBBox();
+		if(sibling != node && sBox.y+sBox.height > pBox.y && pBox.y+pBox.height > sBox.y){ //If there is y-overlap
+			if(sBox.x > pBox.x && sBox.x < pBox.x + pBox.width - 10){				
+				//Put a recursive call to nudge here---this sibling being moved might in turn move others...
+				sibling.changeX(pBox.x + pBox.width + 10 - sBox.x);
+				pushSiblings(sibling);
+			}
+		}
+		if(sBox.x+sBox.width > pBox.x && pBox.x+pBox.width > sBox.x){ //If there is x-overlap
+			if(sBox.y > pBox.y && sBox.y < pBox.y + pBox.height - 10){
+				//nudgeY(sibling, delta);
+				sibling.changeY(pBox.y + pBox.height + 10 - sBox.y);
+				pushSiblings(sibling);
+			}
+		}
+	}
 }
