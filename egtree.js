@@ -69,7 +69,7 @@ function CutNode(x, y, parent){
 
 	this.element.addEventListener('click', onSelect);
 	this.fill.addEventListener('click', onClickConstructMode);
-	this.fill.addEventListener('contextmenu', function(event){scale(this, addEmptyCut(event.pageX, event.pageY,this)); event.preventDefault(); event.stopPropagation(); return false;});
+	this.fill.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this); event.preventDefault(); event.stopPropagation(); return false;});
 
 	this.changeX = function(x){
 		this.x+=x;
