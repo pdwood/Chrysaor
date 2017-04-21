@@ -39,13 +39,18 @@ function clearSelection(){
 	selection.clear();
 }
 
+function selectAllChildren(parent){
+	if('children' in parent) for(let child of parent.children){
+		selection.add(child);
+		child.element.setAttribute("stroke", "red");
+		selectAllChildren(child);
+	}
+}
+
 function onClickConstructMode(event){
 	if(event.shiftKey){
 		clearSelection();
-		for(let node of elementsToNodes.get(this).children){
-			selection.add(node);
-			node.element.setAttribute("stroke", "red");
-		}
+		selectAllChildren(elementsToNodes.get(this));
 	}else{
 		var variableName = prompt("Enter name of variable");
 		if(!variableName) return;
@@ -62,7 +67,9 @@ function onRightClickConstructMode(event){
 
 function handleKeyPress(event){
 	//alert(event.key);
-	if(event.key == "ArrowUp"){
+	if(event.key == "Delete"){
+		
+	}else if(event.key == "ArrowUp"){
 
 	}
 }

@@ -21,16 +21,22 @@ function TextNode(x, y, text, parent){
 	++nextid;
 	this.element.addEventListener('click', onSelect);
 	
-	this.changeX = function(x){
-		this.x+=x;
+	this.setX = function(x){
+		this.x=x;
 		this.element.setAttribute("x", this.x);
-		for(let child of this.children) child.changeX(x);
+	}
+
+	this.setY = function(y){
+		this.y=y;
+		this.element.setAttribute("y", this.y);
+	}
+
+	this.changeX = function(x){
+		this.setX(this.x+x);
 	};
 
 	this.changeY = function(y){
-		this.y+=y;
-		this.element.setAttribute("y", this.y);
-		for(let child of this.children) child.changeY(y);
+		this.setY(this.y+y);
 	};
 	
 	elementsToNodes.set(this.element, this);
@@ -71,18 +77,28 @@ function CutNode(x, y, parent){
 	this.fill.addEventListener('click', onClickConstructMode);
 	this.fill.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this); event.preventDefault(); event.stopPropagation(); return false;});
 
-	this.changeX = function(x){
-		this.x+=x;
+	this.setX = function(x){
+		var delta = x - this.x;
+		this.x=x;
 		this.element.setAttribute("x", this.x);
 		this.fill.setAttribute("x", this.x);
-		for(let child of this.children) child.changeX(x);
+		for(let child of this.children) child.changeX(delta);
+	}
+
+	this.setY = function(y){
+		var delta = y - this.y;
+		this.y=y;
+		this.element.setAttribute("y", this.y);
+		this.fill.setAttribute("y", this.y);
+		for(let child of this.children) child.changeY(delta);
+	}
+
+	this.changeX = function(x){
+		this.setX(this.x+x);
 	};
 
 	this.changeY = function(y){
-		this.y+=y;
-		this.element.setAttribute("y", this.y);
-		this.fill.setAttribute("y", this.y);
-		for(let child of this.children) child.changeY(y);
+		this.setY(this.y+y);
 	};
 
 	this.setWidth = function(width){
