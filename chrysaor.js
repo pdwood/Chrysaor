@@ -1,12 +1,14 @@
 var rootElement;
 
 var selection;
+var startX, startY, dragging;
 
 window.onload=function(){
 	rootElement = document.getElementById('node0');
 	rootElement.addEventListener('click', onClickConstructMode);
 	document.addEventListener('contextmenu', function(event){return false;});
-	rootElement.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this);return false;});
+	rootElement.addEventListener('contextmenu', function(event){addEmptyCut(event.clientX, event.clientY,this);return false;});
+	document.addEventListener('mouseup', handleDrag);
 	RootNode.element = rootElement;
 	selection = new Set();
 	elementsToNodes.set(rootElement, RootNode);
@@ -21,7 +23,6 @@ function onSelect(event){
 	event.stopPropagation();
 	return false;
 }
-
 
 function selectElement(element){
 	var node = elementsToNodes.get(element);
@@ -47,20 +48,37 @@ function selectAllChildren(parent){
 	}
 }
 
+function handleDrag(event){
+	event.stopPropagation();
+	if(!dragging) return false;
+	
+	var deltaX = event.clientX - startX;
+	var deltaY = event.clientY - startY;
+	
+	for(let node of selection){
+		node.changeX(deltaX);
+		node.changeY(deltaY);
+		refresh(node);
+	}
+	dragging = false;
+	return false;
+}
+
 function onClickConstructMode(event){
+	event.stopPropagation();
+	if(dragging) return false;
 	if(event.shiftKey){
 		clearSelection();
 		selectAllChildren(elementsToNodes.get(this));
 	}else{
 		var variableName = prompt("Enter name of variable");
 		if(!variableName) return;
-		var child = addVariable(variableName, event.pageX, event.pageY, this);
+		var child = addVariable(variableName, event.clientX, event.clientY, this);
 	}
-	event.stopPropagation();
 }
 
 function onRightClickConstructMode(event){
-	var child = addEmptyCut(event.pageX, event.pageY, this);
+	var child = addEmptyCut(event.clientX, event.clientY, this);
 	event.stopPropagation();
 	return false;
 }

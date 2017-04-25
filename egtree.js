@@ -20,6 +20,7 @@ function TextNode(x, y, text, parent){
 	this.element.setAttribute("id", "node"+nextid);
 	++nextid;
 	this.element.addEventListener('click', onSelect);
+	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
 	
 	this.setX = function(x){
 		this.x=x;
@@ -71,11 +72,14 @@ function CutNode(x, y, parent){
 	this.element.setAttribute("stroke", "black");
 	this.element.setAttribute("stroke-width", 5);
 	this.element.style.fill = "none";
-
+	this.element.setAttribute("draggable", true);
 
 	this.element.addEventListener('click', onSelect);
+	//this.element.addEventListener('dragstart', 
+	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
+
 	this.fill.addEventListener('click', onClickConstructMode);
-	this.fill.addEventListener('contextmenu', function(event){addEmptyCut(event.pageX, event.pageY,this); event.preventDefault(); event.stopPropagation(); return false;});
+	this.fill.addEventListener('contextmenu', function(event){addEmptyCut(event.clientX, event.clientY,this); event.preventDefault(); event.stopPropagation(); return false;});
 
 	this.setX = function(x){
 		var delta = x - this.x;
