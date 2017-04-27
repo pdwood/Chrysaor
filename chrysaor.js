@@ -132,8 +132,51 @@ function onRightClickInferenceMode(element, event){
 function promptVariable(node, x, y){
 	var variableName = prompt("Enter variable to insert");
 	if(!variableName) return;
-	//TODO parse Fitch syntax here
-	addVariable(variableName, x, y, node);
+
+	createFromExpression(variableName, node, x, y);
+}
+
+function createFromExpression(ex, node, x, y){
+	console.log("Creating from "+ex);
+	if(ex[0]=='~'){
+		var cut = addEmptyCut(x, y, node);
+		createFromExpression(ex.slice(1), cut, x+10, y+10);
+	}else if(ex[0]=='(' && ex[ex.length-1] == ')'){
+		//strip parens
+		createFromExpression(ex.slice(1, -1), node, x, y);
+	}else if(ex[0]=='|'){
+		var outCut = addEmptyCut(x, y, node);
+		console.log(tokenize(ex.slice(1)));
+		for(let s of tokenize(ex.slice(1))){
+			var inCut = addEmptyCut(x+10,y+10,outCut);
+			createFromExpression(s, inCut, x+32, y+32);
+		}
+	}else if(ex[0]=='&'){
+		for(let s of tokenize(ex.slice(1))) createFromExpression(s, node, x, y);
+	}else{
+		addVariable(ex, x, y, node);
+	}
+}
+
+function tokenize(s){
+	s = s.trim();
+	var out = [];
+	var start=0;
+	var parens=0;
+	for(var i=0; i<s.length; ++i){
+		if(s[i] == '(') ++parens;
+		else if(s[i] == ')') --parens;
+		else if(s[i] == ' ' && parens == 0){
+			while(i<s.length && s[i] == ' '){
+				++i;
+			}
+			if(i>start) out.push(s.slice(start, i).trim());
+			--i; //compensate since the for loop will increment i
+			start = i;
+		}
+	}
+	out.push(s.slice(start, i).trim());
+	return out;
 }
 
 function handleKeyPress(event){
@@ -177,19 +220,24 @@ function pushSiblings(node){
 
 	for(let sibling of node.parent.children){
 		var sBox = sibling.element.getBBox();
-		if(sibling != node && sBox.y+sBox.height > pBox.y && pBox.y+pBox.height > sBox.y){ //If there is y-overlap
-			if(sBox.x > pBox.x && sBox.x < pBox.x + pBox.width - 10){				
-				//Put a recursive call to nudge here---this sibling being moved might in turn move others...
-				sibling.changeX(pBox.x + pBox.width + 10 - sBox.x);
-				pushSiblings(sibling);
-			}
+
+		if(sibling != node
+					&& sBox.y+sBox.height>=pBox.y && pBox.y+pBox.height>=sBox.y //If there is y-overlap
+					&& sBox.x+sBox.width >=pBox.x && pBox.x+pBox.width >=sBox.x
+			){
+			var deltaX = (sBox.x >= pBox.x) ? pBox.x + pBox.width - sBox.x + 10 : sBox.x + sBox.width - pBox.x - 10;
+			var deltaY = (sBox.y >= pBox.y) ? pBox.y + pBox.height- sBox.y + 10 : sBox.y + sBox.height- pBox.y - 10;
+			if(Math.abs(deltaX) <= Math.abs(deltaY)) sibling.changeX(deltaX);
+			else sibling.changeY(deltaY);
+
+			pushSiblings(sibling);
 		}
-		if(sBox.x+sBox.width > pBox.x && pBox.x+pBox.width > sBox.x){ //If there is x-overlap
-			if(sBox.y > pBox.y && sBox.y < pBox.y + pBox.height - 10){
+		/*if(sibling != node && sBox.x+sBox.width >= pBox.x && pBox.x+pBox.width >= sBox.x){ //If there is x-overlap
+			if(sBox.y >= pBox.y && sBox.y <= pBox.y + pBox.height - 10){
 				//nudgeY(sibling, delta);
 				sibling.changeY(pBox.y + pBox.height + 10 - sBox.y);
 				pushSiblings(sibling);
 			}
-		}
+		}*/
 	}
 }
