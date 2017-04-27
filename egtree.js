@@ -3,7 +3,7 @@ var nextid = 1;
 var elementsToNodes = new Map();
 
 var RootNode = {
-	depth: 0, x: 0, y: 0, children: new Set(), element: undefined
+	depth: 0, x: 0, y: 0, children: new Set(), fill: undefined
 }
 
 function TextNode(x, y, text, parent){
@@ -21,6 +21,7 @@ function TextNode(x, y, text, parent){
 	++nextid;
 	this.element.addEventListener('click', onSelect);
 	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
+	this.element.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 	
 	this.setX = function(x){
 		this.x=x;
@@ -38,8 +39,20 @@ function TextNode(x, y, text, parent){
 
 	this.changeY = function(y){
 		this.setY(this.y+y);
-	};
-	
+	};	
+
+	this.setDepth = function(depth){
+		this.depth = depth;
+	}
+
+	this.deleteNoRecurse = function(){
+		elementsToNodes.set(this.element, undefined);
+		rootElement.removeChild(this.element);
+		this.parent.children.delete(this);
+	}
+
+	this.deleteWithRecurse = this.deleteWithRecurse;
+
 	elementsToNodes.set(this.element, this);
 
 //	rootnode.appendChild(this.element);
@@ -77,9 +90,10 @@ function CutNode(x, y, parent){
 	this.element.addEventListener('click', onSelect);
 	//this.element.addEventListener('dragstart', 
 	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
+	this.element.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 
-	this.fill.addEventListener('click', onClickConstructMode);
-	this.fill.addEventListener('contextmenu', function(event){addEmptyCut(event.clientX, event.clientY,this); event.preventDefault(); event.stopPropagation(); return false;});
+	this.fill.addEventListener('click', function(event){onClick(this, event);});
+	this.fill.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 
 	this.setX = function(x){
 		var delta = x - this.x;
@@ -115,13 +129,42 @@ function CutNode(x, y, parent){
 		this.fill.setAttribute("height", height);
 	}
 
+	this.setDepth = function(depth){
+		this.depth = depth;
+		this.fill.style.fill=["white","cyan"][this.depth%2];		
+	}
+
+	this.deleteNoRecurse = function(){
+		elementsToNodes.set(this.element, undefined);
+		elementsToNodes.set(this.fill, undefined);
+		rootElement.removeChild(this.element);
+		rootElement.removeChild(this.fill);
+		//Put all of the children onto the parent of this
+		for(let child of this.children){
+			this.parent.children.add(child);
+			child.setDepth(child.depth - 1);
+		}
+		this.parent.children.delete(this);
+	}
+
+	this.deleteWithRecurse = function(){
+		for(let child of this.children){
+			deleteWithRecurse(child);
+		}
+		elementsToNodes.set(this.element, undefined);
+		elementsToNodes.set(this.fill, undefined);
+		rootElement.removeChild(this.element);
+		rootElement.removeChild(this.fill);
+		this.parent.children.delete(this);
+	}
+
 	elementsToNodes.set(this.element, this);
 	elementsToNodes.set(this.fill, this);
 
 }
 
-function addVariable(name, x, y, parentElement){
-	var child = new TextNode(x,y,name,elementsToNodes.get(parentElement));
+function addVariable(name, x, y, parent){
+	var child = new TextNode(x,y,name,parent);
 	rootElement.appendChild(child.element);
 	refresh(child);
 	//First X, then Y:
@@ -132,8 +175,8 @@ function addVariable(name, x, y, parentElement){
 	return child;
 }
 
-function addEmptyCut(x,y,parentElement){
-	var child = new CutNode(x,y,elementsToNodes.get(parentElement));
+function addEmptyCut(x,y,parent){
+	var child = new CutNode(x,y, parent);
 	rootElement.appendChild(child.fill);	
 	rootElement.appendChild(child.element);
 	refresh(child);

@@ -18,14 +18,13 @@
 	</head>
 
 	<body oncontextmenu="return false;" onkeydown="handleKeyPress(event)">
-		<!--form action="">
-			<input type="radio" name="mode" value="construct"> Construct Mode
-			<input type="radio" name="mode" value="inference"> Inference Mode
-			<br>
-		</form-->
-		<svg id="node0" style="position:fixed; top:0; left:0; height:100%; width:100%">
+		<svg id="node0" style="position:fixed; top:0; left:0; height:90%; width:100%">
 
 		</svg>
+		<form id="mode" action="" style="position:fixed; top:90%">
+			<input type="radio" name="mode" value="construct" checked="checked"> Construct Mode
+			<input type="radio" name="mode" value="inference"> Inference Mode
+		</form>
 	</body>
 
 </html>

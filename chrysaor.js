@@ -5,11 +5,11 @@ var startX, startY, dragging;
 
 window.onload=function(){
 	rootElement = document.getElementById('node0');
-	rootElement.addEventListener('click', onClickConstructMode);
+	rootElement.addEventListener('click', function(event){onClick(this, event);});
 	document.addEventListener('contextmenu', function(event){return false;});
-	rootElement.addEventListener('contextmenu', function(event){addEmptyCut(event.clientX, event.clientY,this);return false;});
+	rootElement.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 	document.addEventListener('mouseup', handleDrag);
-	RootNode.element = rootElement;
+	RootNode.fill = rootElement;
 	selection = new Set();
 	elementsToNodes.set(rootElement, RootNode);
 };
@@ -64,32 +64,88 @@ function handleDrag(event){
 	return false;
 }
 
-function onClickConstructMode(event){
+function queryMode(){
+	return document.querySelector('input[name="mode"]:checked').value;
+}
+
+function onClick(element, event){
 	event.stopPropagation();
 	if(dragging) return false;
-	if(event.shiftKey){
-		clearSelection();
-		selectAllChildren(elementsToNodes.get(this));
-	}else{
-		var variableName = prompt("Enter name of variable");
-		if(!variableName) return;
-		var child = addVariable(variableName, event.clientX, event.clientY, this);
+	var mode = queryMode();
+	console.log(mode);
+	if(mode == "construct"){
+		onClickConstructMode(element, event);
+	}else if(mode == "inference"){
+		onClickInferenceMode(element, event);
 	}
 }
 
-function onRightClickConstructMode(event){
-	var child = addEmptyCut(event.clientX, event.clientY, this);
+function onClickConstructMode(element, event){
+	if(event.shiftKey){
+		clearSelection();
+		selectAllChildren(elementsToNodes.get(element));
+	}else{
+		promptVariable(elementsToNodes.get(element), event.clientX, event.clientY);
+	}
+}
+
+function onClickInferenceMode(element, event){
+
+	var node = elementsToNodes.get(element);
+	//Insertion
+	if(node.depth%2 == 1 && node.fill == element) promptVariable(node, event.clientX, event.clientY);
+}
+
+function onRightClick(element, event){
+	event.preventDefault();
 	event.stopPropagation();
-	return false;
+	var mode = queryMode();
+	console.log(mode);
+	if(mode == "construct"){
+		onRightClickConstructMode(element, event);
+	}else if(mode == "inference"){
+		onRightClickInferenceMode(element, event);
+	}
+}
+
+function onRightClickConstructMode(element, event){
+	var node = elementsToNodes.get(element);
+	//only put child cut if fill was clicked
+	if('fill' in node && node.fill == element) addEmptyCut(event.clientX, event.clientY, node);
+}
+
+function onRightClickInferenceMode(element, event){
+	var node = elementsToNodes.get(element);
+
+	console.log("Clicked on object of depth "+node.depth);
+
+	//Erasure (make sure not to erase fill of cut)
+	if(node.depth%2 == 1 && node.element==element) node.deleteWithRecurse();
+
+	//Remove double cut
+	else if('children' in node && node.children.size == 1 && 'children' in node.children.values().next().value){
+		node.children.values().next().value.deleteNoRecurse();
+		node.deleteNoRecurse();
+	}
+}
+
+function promptVariable(node, x, y){
+	var variableName = prompt("Enter variable to insert");
+	if(!variableName) return;
+	//TODO parse Fitch syntax here
+	addVariable(variableName, x, y, node);
 }
 
 function handleKeyPress(event){
 	//alert(event.key);
-	if(event.key == "Delete"){
-		
-	}else if(event.key == "ArrowUp"){
+	if(event.key == "Delete" && queryMode() == "construct"){
+		console.log("trydelete");
+		for(let node of selection){
+			node.deleteNoRecurse();
+		}
+	}//else if(event.key == "ArrowUp"){
 
-	}
+	//}
 }
 
 //Repositions all nodes to accommodate this node.
