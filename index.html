@@ -21,10 +21,14 @@
 		<svg id="node0" style="position:fixed; top:0; left:0; height:90%; width:100%">
 
 		</svg>
-		<form id="mode" action="" style="position:fixed; top:90%">
-			<input type="radio" name="mode" value="construct" checked="checked"> Construct Mode
-			<input type="radio" name="mode" value="inference"> Inference Mode
-		</form>
+		<div style="position:fixed; top:90%">
+			<form id="mode" action="">
+				<input type="radio" name="mode" value="construct" checked="checked"> Construct Mode
+				<input type="radio" name="mode" value="inference"> Inference Mode
+			</form>
+			<button type="button" onclick="displayPegaString()">Get Pegasus String</button>
+			<span id="pega"></span>
+		</div>
 	</body>
 
 </html>

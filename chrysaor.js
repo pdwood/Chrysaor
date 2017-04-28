@@ -184,6 +184,12 @@ function createFromExpression(ex, node, x, y){
 		}
 	}else if(ex[0]=='&'){
 		for(let s of tokenize(ex.slice(1))) createFromExpression(s, node, x, y);
+	}else if(ex[0]=='$'){
+		var outCut = addEmptyCut(x, y, node);
+		var inCut = addEmptyCut(x+10, y+10, outCut);
+		var tokens = tokenize(ex.slice(1));
+		createFromExpression(tokens[1], inCut, x+32, y+32)
+		createFromExpression(tokens[0], outCut, x+32, y+32);
 	}else{
 		addVariable(ex, x, y, node);
 	}
@@ -217,7 +223,15 @@ function handleKeyPress(event){
 			node.deleteNoRecurse();
 		}
 	}//else if(event.key == "ArrowUp"){
-
+	/*else if(event.key == "Enter" && queryMode() = "inference"){
+		var minX = rootElement.getBBox().width;
+		var minY = rootElement.getBBox().height;
+		for(let node of selection){
+			if(node.x < minX) minX = node.x;
+			if(node.y < minY) minY = node.y;
+		}
+		var cut = addEmptyCut(minX, minY)
+	}*/
 	//}
 }
 
