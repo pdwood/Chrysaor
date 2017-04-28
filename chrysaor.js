@@ -1,7 +1,8 @@
 var rootElement;
 
 var selection;
-var startX, startY, dragging;
+var startX, startY;//, dragging;
+var dragStartNode;
 
 window.onload=function(){
 	rootElement = document.getElementById('node0');
@@ -9,6 +10,7 @@ window.onload=function(){
 	document.addEventListener('contextmenu', function(event){return false;});
 	rootElement.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 	document.addEventListener('mouseup', handleDrag);
+	document.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY;});
 	RootNode.fill = rootElement;
 	selection = new Set();
 	elementsToNodes.set(rootElement, RootNode);
@@ -49,18 +51,43 @@ function selectAllChildren(parent){
 }
 
 function handleDrag(event){
+	console.log("drag start");
 	event.stopPropagation();
-	if(!dragging) return false;
+	if(!sufficientDragRadius(event)) return;
 	
 	var deltaX = event.clientX - startX;
 	var deltaY = event.clientY - startY;
-	
-	for(let node of selection){
+	if(queryMode()=="inference" && event.button == 2){
+		console.log("try iteration");
+		var targetNode = elementsToNodes.get(document.elementFromPoint(event.clientX, event.clientY));
+		if('children' in targetNode && isDescendantOf(targetNode, dragStartNode.parent)){
+			console.log("can iterate");
+			//Deiterate
+			if(event.shiftKey){
+				console.log("deiterate");
+				for(let child of targetNode.children){
+					console.log("found child");
+					//Sorted pegastrings uniquely identify subgraphs
+					if(toPegaString(child) == toPegaString(dragStartNode)){
+						console.log("removing child");
+						child.deleteWithRecurse();
+						break;
+					}
+				}
+			}
+			//Iterate
+			else{
+				console.log("iterate");
+				//Don't iterate something into itself. This causes infinite recursion.
+				if(!isDescendantOf(targetNode, dragStartNode)) copySubgraph(dragStartNode, targetNode, event.clientX, event.clientY);
+			}
+		}
+	}else for(let node of selection){
 		node.changeX(deltaX);
 		node.changeY(deltaY);
 		refresh(node);
 	}
-	dragging = false;
+	//dragging = false;
 	return false;
 }
 
@@ -69,24 +96,24 @@ function queryMode(){
 }
 
 function onClick(element, event){
+	if(sufficientDragRadius(event)) return;
 	event.stopPropagation();
-	if(dragging) return false;
-	var mode = queryMode();
-	console.log(mode);
-	if(mode == "construct"){
-		onClickConstructMode(element, event);
-	}else if(mode == "inference"){
-		onClickInferenceMode(element, event);
+	//if(dragging) return false;
+	clearSelection();
+	if(event.shiftKey){
+		selectAllChildren(elementsToNodes.get(element));
+	}else{
+		var mode = queryMode();
+		if(mode == "construct"){
+			onClickConstructMode(element, event);
+		}else if(mode == "inference"){
+			onClickInferenceMode(element, event);
+		}
 	}
 }
 
 function onClickConstructMode(element, event){
-	if(event.shiftKey){
-		clearSelection();
-		selectAllChildren(elementsToNodes.get(element));
-	}else{
-		promptVariable(elementsToNodes.get(element), event.clientX, event.clientY);
-	}
+	promptVariable(elementsToNodes.get(element), event.clientX, event.clientY);
 }
 
 function onClickInferenceMode(element, event){
@@ -97,10 +124,12 @@ function onClickInferenceMode(element, event){
 }
 
 function onRightClick(element, event){
+	console.log("orc start");
+	if(sufficientDragRadius(event)) return;
 	event.preventDefault();
 	event.stopPropagation();
 	var mode = queryMode();
-	console.log(mode);
+	console.log("mode is "+mode);
 	if(mode == "construct"){
 		onRightClickConstructMode(element, event);
 	}else if(mode == "inference"){
@@ -115,18 +144,21 @@ function onRightClickConstructMode(element, event){
 }
 
 function onRightClickInferenceMode(element, event){
+	console.log("orcim start");
 	var node = elementsToNodes.get(element);
-
-	console.log("Clicked on object of depth "+node.depth);
-
+	console.log(node);
+	console.log(node.depth);
 	//Erasure (make sure not to erase fill of cut)
 	if(node.depth%2 == 1 && node.element==element) node.deleteWithRecurse();
 
 	//Remove double cut
-	else if('children' in node && node.children.size == 1 && 'children' in node.children.values().next().value){
+	else if(node != RootNode && 'children' in node && node.children.size == 1 && 'children' in node.children.values().next().value){
+		console.log("DC remove");
 		node.children.values().next().value.deleteNoRecurse();
 		node.deleteNoRecurse();
 	}
+
+	console.log("orcim done");
 }
 
 function promptVariable(node, x, y){
@@ -146,7 +178,6 @@ function createFromExpression(ex, node, x, y){
 		createFromExpression(ex.slice(1, -1), node, x, y);
 	}else if(ex[0]=='|'){
 		var outCut = addEmptyCut(x, y, node);
-		console.log(tokenize(ex.slice(1)));
 		for(let s of tokenize(ex.slice(1))){
 			var inCut = addEmptyCut(x+10,y+10,outCut);
 			createFromExpression(s, inCut, x+32, y+32);
@@ -182,7 +213,6 @@ function tokenize(s){
 function handleKeyPress(event){
 	//alert(event.key);
 	if(event.key == "Delete" && queryMode() == "construct"){
-		console.log("trydelete");
 		for(let node of selection){
 			node.deleteNoRecurse();
 		}
@@ -232,12 +262,38 @@ function pushSiblings(node){
 
 			pushSiblings(sibling);
 		}
-		/*if(sibling != node && sBox.x+sBox.width >= pBox.x && pBox.x+pBox.width >= sBox.x){ //If there is x-overlap
-			if(sBox.y >= pBox.y && sBox.y <= pBox.y + pBox.height - 10){
-				//nudgeY(sibling, delta);
-				sibling.changeY(pBox.y + pBox.height + 10 - sBox.y);
-				pushSiblings(sibling);
-			}
-		}*/
 	}
+}
+
+function toPegaString(node){
+	var output="";
+	if('children' in node){
+		if(node != RootNode) output += '(';
+		var childStrings = [];
+		for(let child of node.children){
+			childStrings.push(toPegaString(child));
+		}
+		childStrings.sort();
+		for(var i=0; i<childStrings.length; ++i){
+			output += childStrings[i];
+			if(i != childStrings.length-1) output += '|';
+		}
+		/*for(let child of node.children){
+			output+=toPegaString(child);
+			output+='|';
+		}
+		if(output.length>0) output = output.slice(0, -1);*/
+		if(node != RootNode) output += ')';
+	}else output = node.element.innerHTML;
+
+	return output;
+}
+
+function displayPegaString(){
+	document.getElementById("pega").innerHTML = toPegaString(RootNode);
+}
+
+//Determines whether a mouse event should be classified as a drag
+function sufficientDragRadius(event){
+	return (event.clientX - startX)*(event.clientX - startX) + (event.clientY - startY)*(event.clientY - startY) > 20;
 }

@@ -12,15 +12,16 @@ function TextNode(x, y, text, parent){
 	this.y=y;
 	this.parent = parent;
 	this.parent.children.add(this);
+	this.depth = parent.depth+1;
 
 	this.element = document.createElementNS("http://www.w3.org/2000/svg", 'text');
 	this.element.setAttribute("x", x);
 	this.element.setAttribute("y", y);
-	this.element.innerHTML = text; //TODO: Parse Fitch syntax
-	this.element.setAttribute("id", "node"+nextid);
+	this.element.innerHTML = text;
+	//this.element.setAttribute("id", "node"+nextid);
 	++nextid;
 	this.element.addEventListener('click', onSelect);
-	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
+	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation(); dragStartNode=elementsToNodes.get(this);});
 	this.element.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
 	
 	this.setX = function(x){
@@ -51,7 +52,7 @@ function TextNode(x, y, text, parent){
 		this.parent.children.delete(this);
 	}
 
-	this.deleteWithRecurse = this.deleteWithRecurse;
+	this.deleteWithRecurse = this.deleteNoRecurse;
 
 	elementsToNodes.set(this.element, this);
 
@@ -89,8 +90,8 @@ function CutNode(x, y, parent){
 
 	this.element.addEventListener('click', onSelect);
 	//this.element.addEventListener('dragstart', 
-	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation();});
-	this.element.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
+	this.element.addEventListener('mousedown', function(event){startX = event.clientX; startY = event.clientY; dragging = true; event.stopPropagation(); dragStartNode=elementsToNodes.get(this);});
+	this.element.addEventListener('contextmenu', function(event){console.log("rc happened"); onRightClick(this, event); return false;});
 
 	this.fill.addEventListener('click', function(event){onClick(this, event);});
 	this.fill.addEventListener('contextmenu', function(event){onRightClick(this, event); return false;});
@@ -143,13 +144,16 @@ function CutNode(x, y, parent){
 		for(let child of this.children){
 			this.parent.children.add(child);
 			child.setDepth(child.depth - 1);
+			child.parent = this.parent;
 		}
 		this.parent.children.delete(this);
 	}
 
 	this.deleteWithRecurse = function(){
+		console.log("Started a delete.");
 		for(let child of this.children){
-			deleteWithRecurse(child);
+			console.log("Found a child");
+			child.deleteWithRecurse();
 		}
 		elementsToNodes.set(this.element, undefined);
 		elementsToNodes.set(this.fill, undefined);
@@ -161,6 +165,22 @@ function CutNode(x, y, parent){
 	elementsToNodes.set(this.element, this);
 	elementsToNodes.set(this.fill, this);
 
+}
+
+function isDescendantOf(child, parent){
+	if(parent == child) return true;
+	if(child.depth <= parent.depth) return false;
+	return isDescendantOf(child.parent, parent);
+}
+
+function copySubgraph(source, target, x, y){
+	console.log("copy subgraph");
+	if('children' in source){
+		var newCut = addEmptyCut(x, y, target);
+		for(let child of source.children) copySubgraph(child, newCut, x, y);
+	}else{
+		addVariable(source.element.innerHTML, x+20, y+20, target);
+	}
 }
 
 function addVariable(name, x, y, parent){
