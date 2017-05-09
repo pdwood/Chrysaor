@@ -53,7 +53,10 @@ function selectAllChildren(parent){
 function handleDrag(event){
 	console.log("drag start");
 	event.stopPropagation();
-	if(!sufficientDragRadius(event)) return;
+	if(!sufficientDragRadius(event)){
+		dragStartNode = undefined;
+		return;
+	}
 	
 	var deltaX = event.clientX - startX;
 	var deltaY = event.clientY - startY;
@@ -87,6 +90,8 @@ function handleDrag(event){
 		node.changeY(deltaY);
 		refresh(node);
 	}
+
+	dragStartNode = undefined;
 	//dragging = false;
 	return false;
 }
